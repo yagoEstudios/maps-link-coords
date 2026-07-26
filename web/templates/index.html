@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maps → Coordenadas</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <h1>📍 Maps → Coordenadas</h1>
+    <p class="subtitle">Link corto de Google Maps · lat, lon</p>
+
+    <form id="form">
+      <label>Link de Google Maps</label>
+      <textarea id="url" name="url" rows="1" placeholder="https://maps.app.goo.gl/…"></textarea>
+      <button type="button" class="secondary" id="clear">Limpiar</button>
+
+      <button type="submit" class="primary" id="submit">Obtener coordenadas</button>
+    </form>
+
+    <div class="result" id="result" hidden>
+      <div class="coords" id="coords"></div>
+      <button type="button" class="secondary" id="copy">Copiar</button>
+    </div>
+
+    <p class="status" id="status"></p>
+  </main>
+
+  <script>
+    const urlField = document.getElementById('url');
+    const form = document.getElementById('form');
+    const status = document.getElementById('status');
+    const submit = document.getElementById('submit');
+    const result = document.getElementById('result');
+    const coordsEl = document.getElementById('coords');
+    const copyBtn = document.getElementById('copy');
+
+    document.getElementById('clear').addEventListener('click', () => {
+      urlField.value = '';
+      urlField.focus();
+    });
+
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(coordsEl.textContent);
+      copyBtn.textContent = '¡Copiado!';
+      setTimeout(() => (copyBtn.textContent = 'Copiar'), 1200);
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      result.hidden = true;
+      status.className = 'status';
+      status.textContent = 'Resolviendo…';
+      submit.disabled = true;
+      try {
+        const resp = await fetch('/coords', { method: 'POST', body: new FormData(form) });
+        const data = await resp.json();
+        if (!resp.ok) {
+          status.className = 'status error';
+          status.textContent = '⚠ ' + (data.error || 'Error');
+          return;
+        }
+        coordsEl.textContent = data.lat + ', ' + data.lon;
+        result.hidden = false;
+        status.textContent = '';
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = '⚠ ' + err.message;
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
