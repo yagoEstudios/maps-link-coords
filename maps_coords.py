@@ -74,6 +74,10 @@ def _coords_from_place(session, response):
 
 def short_to_coords(short_url: str):
     """Devuelve (lat, lon) del link corto/largo de Google Maps, o None."""
+    # URL completa (de escritorio): las coords ya vienen en el texto, sin red.
+    coords = _coords_from_url(short_url)
+    if coords:
+        return coords
     session = _session()
     r = session.get(short_url, allow_redirects=True, timeout=15, stream=True)
     coords = _coords_from_url(r.url)
