@@ -1,11 +1,14 @@
 // Cloudflare Worker: expande un link corto de Google Maps (goo.gl) a su URL
-// completa siguiendo la redireccion. Devuelve JSON {url: "..."} con CORS.
-// El navegador lo usa para los links cortos; luego PythonAnywhere saca las coords.
+// completa. Sigue los redirects a mano y PARA en cuanto llega a /maps/, sin
+// tocar www.google.com (que a IPs de datacenter le sirve un CAPTCHA /sorry/).
+// Devuelve JSON {url: "..."} con CORS.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
+
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
 function json(obj, status) {
   return new Response(JSON.stringify(obj), {
@@ -22,17 +25,24 @@ export default {
     if (!link) return json({ error: "falta el parametro url" }, 400);
 
     try {
-      const r = await fetch(link, {
-        redirect: "follow",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Cookie": "SOCS=CAISHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmVuIAEaBgiA_LyrBg",
-        },
-      });
-      let finalUrl = r.url;
-      const parsed = new URL(finalUrl);
-      if (parsed.hostname.startsWith("consent.")) {
-        const cont = parsed.searchParams.get("continue");
+      let current = link;
+      let finalUrl = link;
+      for (let i = 0; i < 6; i++) {
+        const r = await fetch(current, {
+          redirect: "manual",
+          headers: { "User-Agent": UA },
+        });
+        const loc = r.headers.get("location");
+        if (!loc) break;
+        finalUrl = new URL(loc, current).toString();
+        // En cuanto tenemos la URL de /maps/ paramos: no seguimos a google.com.
+        if (/\/maps\//.test(finalUrl)) break;
+        current = finalUrl;
+      }
+      // Fallback: si acabo en /sorry/ o consent, la URL real esta en ?continue=
+      const p = new URL(finalUrl);
+      if (p.pathname.startsWith("/sorry") || p.hostname.startsWith("consent.")) {
+        const cont = p.searchParams.get("continue");
         if (cont) finalUrl = cont;
       }
       return json({ url: finalUrl });
