@@ -28,6 +28,10 @@
   </main>
 
   <script>
+    // URL de tu Cloudflare Worker (expande los links cortos goo.gl).
+    // Reemplaza por la que te da Cloudflare al desplegarlo.
+    const WORKER = "https://REEMPLAZA-CON-TU-WORKER.workers.dev";
+
     const urlField = document.getElementById('url');
     const form = document.getElementById('form');
     const status = document.getElementById('status');
@@ -54,7 +58,18 @@
       status.textContent = 'Resolviendo…';
       submit.disabled = true;
       try {
-        const resp = await fetch('/coords', { method: 'POST', body: new FormData(form) });
+        let link = urlField.value.trim();
+        if (/goo\.gl/.test(link)) {
+          status.textContent = 'Expandiendo link corto…';
+          const wr = await fetch(WORKER + '?url=' + encodeURIComponent(link));
+          const wd = await wr.json();
+          if (!wr.ok || !wd.url) throw new Error(wd.error || 'No se pudo expandir el link corto');
+          link = wd.url;
+        }
+        status.textContent = 'Resolviendo…';
+        const body = new FormData();
+        body.append('url', link);
+        const resp = await fetch('/coords', { method: 'POST', body });
         const data = await resp.json();
         if (!resp.ok) {
           status.className = 'status error';
