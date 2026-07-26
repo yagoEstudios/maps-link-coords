@@ -7,12 +7,10 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
-const SOCS = "CAISHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmVuIAEaBgiA_LyrBg";
-
-function json(obj, status = 200) {
+function json(obj, status) {
   return new Response(JSON.stringify(obj), {
-    status,
-    headers: { ...CORS, "Content-Type": "application/json" },
+    status: status || 200,
+    headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
   });
 }
 
@@ -28,11 +26,10 @@ export default {
         redirect: "follow",
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Cookie: `SOCS=${SOCS}`,
+          "Cookie": "SOCS=CAISHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmVuIAEaBgiA_LyrBg",
         },
       });
       let finalUrl = r.url;
-      // Si acaba en la pagina de consentimiento, la URL real esta en ?continue=
       const parsed = new URL(finalUrl);
       if (parsed.hostname.startsWith("consent.")) {
         const cont = parsed.searchParams.get("continue");
